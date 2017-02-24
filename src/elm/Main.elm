@@ -3,11 +3,20 @@ module Main exposing (..)
 import Task exposing (Task)
 import Html exposing (..)
 import Html.Attributes exposing (placeholder, value, classList, class)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, on)
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Array exposing (Array)
 import Dom exposing (focus, Error)
+import Json.Decode as Json
+import Keyboard exposing (presses)
+import Char exposing (fromCode)
+
+
+onKeypress : msg -> Attribute msg
+onKeypress message =
+    on "keypress" (Json.succeed message)
+
 
 
 -- APP
@@ -20,7 +29,7 @@ main =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Keyboard.presses (\code -> Presses (Char.fromCode code))
 
 
 
@@ -109,7 +118,9 @@ board =
 type Msg
     = NoOp
     | ScoreWord
-    | UpdateGuess String
+    | UpdateGuessWord String
+    | CheckKey
+    | Presses Char
 
 
 firstLetter : String -> String
@@ -125,6 +136,12 @@ init =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Presses code ->
+            if code == '\x0D' then
+                (update ScoreWord model)
+            else
+                (update NoOp model)
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -147,7 +164,7 @@ update msg model =
             , Task.attempt (always NoOp) (Dom.focus "guess-input")
             )
 
-        UpdateGuess guess ->
+        UpdateGuessWord guess ->
             let
                 checkTile : String -> Tile -> Tile
                 checkTile guessLetter tile =
@@ -201,6 +218,9 @@ update msg model =
                   }
                 , Cmd.none
                 )
+
+        CheckKey ->
+            ( model, Cmd.none )
 
 
 shortenedWord : String -> String
@@ -299,7 +319,14 @@ view model =
                     [ h2 [] [ text <| "Score: " ++ toString model.score ]
                     , div [ class "boardContainer" ] (List.map makeTile <| Dict.values model.board)
                     , div []
-                        [ input [ Html.Attributes.id "guess-input", placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
+                        [ input
+                            [ Html.Attributes.id "guess-input"
+                            , onKeypress CheckKey
+                            , placeholder "Guess away!"
+                            , onInput UpdateGuessWord
+                            , value model.currentGuess
+                            ]
+                            []
                         , button [ onClick ScoreWord ] [ text "Check" ]
                         ]
                     ]
