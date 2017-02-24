@@ -8,15 +8,10 @@ import Dict exposing (Dict)
 import Set exposing (Set)
 import Array exposing (Array)
 import Dom exposing (focus, Error)
-import Json.Decode as Json
+import Http
+import Json.Decode as Decode
 import Keyboard exposing (presses)
 import Char exposing (fromCode)
-
-
-onKeypress : msg -> Attribute msg
-onKeypress message =
-    on "keypress" (Json.succeed message)
-
 
 
 -- APP
@@ -27,9 +22,44 @@ main =
     Html.program { init = init, subscriptions = subscriptions, view = view, update = update }
 
 
+
+-- SUBSCRIPTIONS
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Keyboard.presses (\code -> Presses (Char.fromCode code))
+
+
+
+-- HTTP
+
+
+authenticatedGet : String -> Decode.Decoder String -> Http.Request String
+authenticatedGet url decoder =
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "X-Mashape-Key" "7RhzLqB7x0mshfh5YE2afEP7Ngkxp1xigQqjsnKy6oDuQ7CfkC" ]
+        , body = Http.emptyBody
+        , url = url
+        , expect = Http.expectJson decoder
+        , timeout = Nothing
+        , withCredentials = False
+        }
+
+
+lookUpWord : String -> Cmd Msg
+lookUpWord word =
+    let
+        url =
+            "https://wordsapiv1.p.mashape.com/words/" ++ word
+    in
+        Http.send DefineWord (authenticatedGet url decodeGifUrl)
+
+
+decodeGifUrl : Decode.Decoder String
+decodeGifUrl =
+    Decode.at [ "word" ] Decode.string
 
 
 
@@ -37,7 +67,15 @@ subscriptions model =
 
 
 type alias Model =
-    { board : BoardDict, score : Int, currentGuess : String, foundWords : List String, hasMatch : Bool, guessed : Bool, correct : Bool }
+    { board : BoardDict
+    , score : Int
+    , currentGuess : String
+    , foundWords : List String
+    , hasMatch : Bool
+    , guessed : Bool
+    , correct : Maybe Bool
+    , definition : Maybe String
+    }
 
 
 type alias Board =
@@ -80,7 +118,8 @@ model =
     , foundWords = []
     , hasMatch = False
     , guessed = False
-    , correct = False
+    , correct = Nothing
+    , definition = Nothing
     }
 
 
@@ -119,8 +158,8 @@ type Msg
     = NoOp
     | ScoreWord
     | UpdateGuessWord String
-    | CheckKey
     | Presses Char
+    | DefineWord (Result Http.Error String)
 
 
 firstLetter : String -> String
@@ -146,20 +185,51 @@ update msg model =
             ( model, Cmd.none )
 
         ScoreWord ->
+            -- TODO add a let to encapsulate this hasmatch not member stuffff
             ( { model
                 | score =
                     if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
                         model.score + (String.length model.currentGuess)
                     else
                         model.score
-                , foundWords =
+                , guessed = True
+                , currentGuess =
                     if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
+                        model.currentGuess
+                    else
+                        ""
+                , correct =
+                    if (List.member model.currentGuess model.foundWords) then
+                        Just True
+                    else
+                        Nothing
+              }
+            , (if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
+                lookUpWord model.currentGuess
+               else
+                Cmd.none
+              )
+            )
+
+        DefineWord (Ok definition) ->
+            ( { model
+                | definition = Just (definition)
+                , currentGuess = ""
+                , correct = Just model.hasMatch
+                , foundWords =
+                    if not (List.member model.currentGuess model.foundWords) then
                         model.currentGuess :: model.foundWords
                     else
                         model.foundWords
+              }
+            , Task.attempt (always NoOp) (Dom.focus "guess-input")
+            )
+
+        DefineWord (Err _) ->
+            ( { model
+                | definition = Nothing
                 , currentGuess = ""
-                , guessed = True
-                , correct = model.hasMatch
+                , correct = Just False
               }
             , Task.attempt (always NoOp) (Dom.focus "guess-input")
             )
@@ -218,9 +288,6 @@ update msg model =
                   }
                 , Cmd.none
                 )
-
-        CheckKey ->
-            ( model, Cmd.none )
 
 
 shortenedWord : String -> String
@@ -314,14 +381,13 @@ view model =
             div [ class "foundWord" ] [ text word ]
     in
         div []
-            [ div [ classList [ ( "game", True ), ( "guessed", model.guessed ), ( "correct", model.correct ) ] ]
+            [ div [ classList [ ( "game", True ), ( "guessed", model.guessed ), ( "pending", model.correct == Nothing ), ( "correct", model.correct == Just True ) ] ]
                 [ div []
                     [ h2 [] [ text <| "Score: " ++ toString model.score ]
                     , div [ class "boardContainer" ] (List.map makeTile <| Dict.values model.board)
                     , div []
                         [ input
                             [ Html.Attributes.id "guess-input"
-                            , onKeypress CheckKey
                             , placeholder "Guess away!"
                             , onInput UpdateGuessWord
                             , value model.currentGuess

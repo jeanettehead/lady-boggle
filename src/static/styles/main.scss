@@ -8,7 +8,15 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 }
 
 .guessed .letter--highlighted {
+  background-color: #f2ac9f;
+}
+
+.correct.guessed .letter--highlighted {
   background-color: #8cc174;
+}
+
+.pending.guessed .letter--highlighted {
+  background-color: #f8ffc6;
 }
 
 .boardContainer {
