@@ -1,4 +1,7 @@
-# elm-webpack-starter
+# LADY BOGGLE
+
+Boggle written in elm by ladies
+
 
 A simple Webpack setup for writing [Elm](http://elm-lang.org/) apps:
 
