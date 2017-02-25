@@ -13,6 +13,7 @@ import Json.Decode as Decode
 import Keyboard exposing (presses)
 import Char exposing (fromCode)
 import BoardRandomizer
+import Time
 
 
 -- APP
@@ -29,7 +30,11 @@ main =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Keyboard.presses (\code -> Presses (Char.fromCode code))
+    Sub.batch
+        [ Keyboard.presses
+            (\code -> Presses (Char.fromCode code))
+        , Time.every Time.second Tick
+        ]
 
 
 
@@ -76,6 +81,7 @@ type alias Model =
     , guessed : Bool
     , correct : Maybe Bool
     , definition : Maybe String
+    , ticks : Int
     }
 
 
@@ -139,6 +145,7 @@ model =
     , guessed = False
     , correct = Nothing
     , definition = Nothing
+    , ticks = 0
     }
 
 
@@ -170,20 +177,7 @@ createBoard seed =
 
 
 
--- UPDATE
-
-
-type Msg
-    = NoOp
-    | ScoreWord
-    | UpdateGuessWord String
-    | Presses Char
-    | DefineWord (Result Http.Error String)
-
-
-firstLetter : String -> String
-firstLetter string =
-    String.slice 0 1 string
+-- INIT
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -195,6 +189,19 @@ init flags =
     )
 
 
+
+-- UPDATE
+
+
+type Msg
+    = NoOp
+    | ScoreWord
+    | UpdateGuessWord String
+    | Presses Char
+    | DefineWord (Result Http.Error String)
+    | Tick Time.Time
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -204,41 +211,48 @@ update msg model =
             else
                 (update NoOp model)
 
+        Tick time ->
+            ( { model
+                | ticks = model.ticks + 1
+              }
+            , Cmd.none
+            )
+
         NoOp ->
             ( model, Cmd.none )
 
         ScoreWord ->
-            -- TODO add a let to encapsulate this hasmatch not member stuffff
-            ( { model
-                | score =
-                    if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
-                        model.score + (String.length model.currentGuess)
-                    else
-                        model.score
-                , guessed = True
-                , currentGuess =
-                    if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
-                        model.currentGuess
-                    else
-                        ""
-                , correct =
-                    if (List.member model.currentGuess model.foundWords) then
+            let
+                isValidGuess =
+                    model.hasMatch && not (List.member model.currentGuess model.foundWords)
+
+                isCorrect =
+                    if isValidGuess then
                         Just True
                     else
                         Nothing
-              }
-            , (if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
-                lookUpWord model.currentGuess
-               else
-                Cmd.none
-              )
-            )
+            in
+                ( { model
+                    | guessed = True
+                    , currentGuess =
+                        if isValidGuess then
+                            model.currentGuess
+                        else
+                            ""
+                    , correct = isCorrect
+                  }
+                , if isValidGuess then
+                    lookUpWord model.currentGuess
+                  else
+                    Cmd.none
+                )
 
         DefineWord (Ok definition) ->
             ( { model
                 | definition = Just (definition)
                 , currentGuess = ""
-                , correct = Just model.hasMatch
+                , correct = Just True
+                , score = model.score + (String.length model.currentGuess)
                 , foundWords =
                     if not (List.member model.currentGuess model.foundWords) then
                         model.currentGuess :: model.foundWords
@@ -324,6 +338,11 @@ clearBoard board =
             }
     in
         Dict.map clearTile board
+
+
+firstLetter : String -> String
+firstLetter string =
+    String.slice 0 1 string
 
 
 shortenedWord : String -> String
@@ -416,20 +435,25 @@ view model =
         makeFoundWord word =
             div [ class "foundWord" ] [ text word ]
     in
-        div []
-            [ div [ classList [ ( "game", True ), ( "guessed", model.guessed ), ( "pending", model.correct == Nothing ), ( "correct", model.correct == Just True ) ] ]
+        div [ class "gameRoot" ]
+            [ div [ class "header" ]
+                [ h2 [ class "timer" ] [ text <| "" ++ toString (model.ticks) ]
+                , h1 [ class "title" ] [ text "Elm Boggle" ]
+                ]
+            , div [ classList [ ( "game", True ), ( "guessed", model.guessed ), ( "pending", model.correct == Nothing ), ( "correct", model.correct == Just True ) ] ]
                 [ div []
                     [ h2 [] [ text <| "Score: " ++ toString model.score ]
                     , div [ class "boardContainer" ] (List.map makeTile <| Dict.values model.board)
-                    , div []
+                    , div [ class "controls" ]
                         [ input
-                            [ Html.Attributes.id "guess-input"
+                            [ class "guesser"
                             , placeholder "Guess away!"
                             , onInput UpdateGuessWord
                             , value model.currentGuess
+                            , Html.Attributes.autofocus True
                             ]
                             []
-                        , button [ onClick ScoreWord ] [ text "Check" ]
+                        , button [ class "checker", onClick ScoreWord ] [ text "Check" ]
                         ]
                     ]
                 , div [ class "foundWordContainer" ] <| [ h2 [] [ text "Found Words" ] ] ++ (List.map makeFoundWord model.foundWords)

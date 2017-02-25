@@ -3,8 +3,46 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 @import '~bootstrap-sass/assets/stylesheets/_bootstrap.scss';
 
 // can add Boostrap overrides, additional Sass/CSS below...
+.controls {
+  width: 340px;
+  margin-left: 5px;
+  display: flex;
+  flex-direction: column;
+}
+
+.guesser {
+  height: 50px;
+  width: 100%;
+  font-size: 24px;
+}
+
+.checker {
+  height: 50px;
+  width: 100px;
+  font-size: 24px;
+  margin-top: 5px;
+  align-self: flex-end;
+}
+
+.gameRoot {
+  padding-left: 30px;
+}
 .game {
     display: flex;
+}
+
+.header {
+  display: flex;
+}
+
+.title {
+  position: absolute;
+  margin-left: 150px;
+}
+
+.timer {
+  margin-top: 50px;
+  margin-bottom: 0;
 }
 
 .guessed .letter--highlighted {
