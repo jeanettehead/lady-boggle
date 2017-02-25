@@ -12,14 +12,15 @@ import Http
 import Json.Decode as Decode
 import Keyboard exposing (presses)
 import Char exposing (fromCode)
+import BoardRandomizer
 
 
 -- APP
 
 
-main : Program Never Model Msg
+main : Program Flags Model Msg
 main =
-    Html.program { init = init, subscriptions = subscriptions, view = view, update = update }
+    Html.programWithFlags { init = init, subscriptions = subscriptions, view = view, update = update }
 
 
 
@@ -78,6 +79,11 @@ type alias Model =
     }
 
 
+type alias Flags =
+    { startTime : Int
+    }
+
+
 type alias Board =
     List Row
 
@@ -112,7 +118,20 @@ type alias BoardDict =
 
 model : Model
 model =
-    { board = board
+    { board =
+        let
+            letters =
+                [ [ "" ] ]
+
+            tilesForRow : List String -> Row
+            tilesForRow row =
+                List.map tileForLetter row
+
+            tileForLetter : String -> Tile
+            tileForLetter letter =
+                { letter = letter, match = False }
+        in
+            getBoardDict <| List.map tilesForRow letters
     , score = 0
     , currentGuess = ""
     , foundWords = []
@@ -128,16 +147,16 @@ boardWidth =
     5
 
 
-board : BoardDict
-board =
+
+-- board : BoardDict
+-- board =
+
+
+createBoard : Int -> BoardDict
+createBoard seed =
     let
         letters =
-            [ [ "l", "r", "e", "o", "s" ]
-            , [ "e", "d", "i", "w", "f" ]
-            , [ "j", "e", "m", "w", "e" ]
-            , [ "a", "f", "l", "t", "r" ]
-            , [ "o", "s", "a", "h", "h" ]
-            ]
+            BoardRandomizer.createRandomBoard boardWidth seed
 
         tilesForRow : List String -> Row
         tilesForRow row =
@@ -167,9 +186,13 @@ firstLetter string =
     String.slice 0 1 string
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( model, Cmd.none )
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    ( { model
+        | board = createBoard flags.startTime
+      }
+    , Cmd.none
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -278,16 +301,29 @@ update msg model =
                         tile
 
                 newDict =
-                    Dict.map findMatches board
+                    Dict.map findMatches <| clearBoard model.board
             in
                 ( { model
-                    | currentGuess = guess
+                    | currentGuess =
+                        guess
                     , board = newDict
                     , hasMatch = not <| Dict.isEmpty (Dict.filter (\key tile -> tile.match == True) newDict)
                     , guessed = False
                   }
                 , Cmd.none
                 )
+
+
+clearBoard : BoardDict -> BoardDict
+clearBoard board =
+    let
+        clearTile : Point -> Tile -> Tile
+        clearTile point tile =
+            { tile
+                | match = False
+            }
+    in
+        Dict.map clearTile board
 
 
 shortenedWord : String -> String
