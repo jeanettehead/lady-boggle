@@ -438,7 +438,10 @@ view model =
         div [ class "gameRoot" ]
             [ div [ class "header" ]
                 [ h2 [ class "timer" ] [ text <| "" ++ toString (model.ticks) ]
-                , h1 [ class "title" ] [ text "Elm Boggle" ]
+                , h1 [ class "title" ]
+                    [ a [ Html.Attributes.href "http://elm-lang.org/" ] [ text "Elm" ]
+                    , text " Boggle"
+                    ]
                 ]
             , div [ classList [ ( "game", True ), ( "guessed", model.guessed ), ( "pending", model.correct == Nothing ), ( "correct", model.correct == Just True ) ] ]
                 [ div []
@@ -457,5 +460,9 @@ view model =
                         ]
                     ]
                 , div [ class "foundWordContainer" ] <| [ h2 [] [ text "Found Words" ] ] ++ (List.map makeFoundWord model.foundWords)
+                ]
+            , div [ class "footer" ]
+                [ a [ Html.Attributes.href "https://github.com/jeanettehead/lady-boggle" ] [ text "See the code on GitHub" ]
+                , a [ Html.Attributes.href "http://iamjea.net" ] [ text "My Website" ]
                 ]
             ]

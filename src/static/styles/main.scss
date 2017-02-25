@@ -3,6 +3,16 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 @import '~bootstrap-sass/assets/stylesheets/_bootstrap.scss';
 
 // can add Boostrap overrides, additional Sass/CSS below...
+.footer {
+  display: flex;
+  flex-direction: column;
+  font-size: 18px;
+  width: 100%;
+  border-top: 2px solid #ddd;
+  margin-top: 50px;
+  padding-top: 10px;
+}
+
 .controls {
   width: 340px;
   margin-left: 5px;
@@ -26,6 +36,7 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 
 .gameRoot {
   padding-left: 30px;
+  padding-right: 30px;
 }
 .game {
     display: flex;
@@ -36,9 +47,18 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 }
 
 .title {
+  color: #1c818e;
   position: absolute;
   margin-left: 150px;
+  a {
+    color: #1c818e;
+  }
+  a:hover {
+    color: #125a63;
+    text-decoration: none;
+  }
 }
+
 
 .timer {
   margin-top: 50px;
