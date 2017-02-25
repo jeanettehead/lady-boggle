@@ -1,4 +1,4 @@
-port module BoardRandomizer exposing (createRandomBoard)
+module BoardRandomizer exposing (createRandomBoard)
 
 import Html
 import Random exposing (int, initialSeed, generate, step)

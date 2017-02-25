@@ -5,15 +5,15 @@ import Html exposing (..)
 import Html.Attributes exposing (placeholder, value, classList, class)
 import Html.Events exposing (onClick, onInput, on)
 import Dict exposing (Dict)
-import Set exposing (Set)
-import Array exposing (Array)
 import Dom exposing (focus, Error)
 import Http
 import Json.Decode as Decode
 import Keyboard exposing (presses)
 import Char exposing (fromCode)
-import BoardRandomizer
 import Time
+import BoardRandomizer
+import PathFinder exposing (findPaths)
+import Types exposing (..)
 
 
 -- APP
@@ -90,38 +90,6 @@ type alias Flags =
     }
 
 
-type alias Board =
-    List Row
-
-
-type alias Tile =
-    { letter : String, match : Bool }
-
-
-type alias Point =
-    ( Int, Int )
-
-
-type alias Row =
-    List Tile
-
-
-type alias StartingPoints =
-    List Point
-
-
-type alias Path =
-    List Point
-
-
-type alias Paths =
-    List Path
-
-
-type alias BoardDict =
-    Dict Point Tile
-
-
 model : Model
 model =
     { board =
@@ -152,11 +120,6 @@ model =
 boardWidth : Int
 boardWidth =
     5
-
-
-
--- board : BoardDict
--- board =
 
 
 createBoard : Int -> BoardDict
@@ -273,43 +236,9 @@ update msg model =
 
         UpdateGuessWord guess ->
             let
-                checkTile : String -> Tile -> Tile
-                checkTile guessLetter tile =
-                    { tile | match = (guessLetter == tile.letter) }
-
-                matchFirstLetter : Point -> Tile -> Tile
-                matchFirstLetter point tile =
-                    checkTile (firstLetter guess) tile
-
-                findPaths : List Path
-                findPaths =
-                    List.filter (\path -> List.length path == String.length guess) <|
-                        List.concat <|
-                            (List.map
-                                (\point -> (explorePath model.board [ point ] (shortenedWord guess)))
-                             <|
-                                Dict.keys firstLetterMatches
-                            )
-
-                firstLetterMatches : BoardDict
-                firstLetterMatches =
-                    Dict.filter isMatching <|
-                        Dict.map matchFirstLetter model.board
-
-                isMatching : Point -> Tile -> Bool
-                isMatching _ tile =
-                    tile.match
-
-                neighborList : List Point
-                neighborList =
-                    List.concatMap getNeighbors <|
-                        Dict.keys <|
-                            Dict.filter isMatching <|
-                                Dict.map matchFirstLetter model.board
-
                 findMatches : Point -> Tile -> Tile
                 findMatches point tile =
-                    if List.member point (Maybe.withDefault [] (List.head findPaths)) then
+                    if List.member point (Maybe.withDefault [] (List.head <| findPaths boardWidth model.board guess)) then
                         { tile | match = True }
                     else
                         tile
@@ -338,71 +267,6 @@ clearBoard board =
             }
     in
         Dict.map clearTile board
-
-
-firstLetter : String -> String
-firstLetter string =
-    String.slice 0 1 string
-
-
-shortenedWord : String -> String
-shortenedWord word =
-    String.dropLeft 1 word
-
-
-explorePath : BoardDict -> Path -> String -> List Path
-explorePath board path word =
-    let
-        lastPoint : Path -> Maybe Point
-        lastPoint path =
-            Array.get 0 (Array.fromList path)
-
-        travel : BoardDict -> String -> Path -> List Path
-        travel board word path =
-            List.map
-                (\match ->
-                    if (not <| List.member match path) then
-                        List.append [ match ] path
-                    else
-                        []
-                )
-                (matchingNeighbors board (lastPoint path) (firstLetter word))
-    in
-        if String.length word > 0 then
-            List.concatMap (\aPath -> (explorePath board aPath <| shortenedWord word)) (travel board word path)
-        else
-            [ path ]
-
-
-matchingNeighbors : BoardDict -> Maybe Point -> String -> List Point
-matchingNeighbors board point letter =
-    let
-        isMatch : Point -> Point -> Tile -> Bool
-        isMatch origin point tile =
-            (List.member point <| getNeighbors origin) && (tile.letter == letter)
-    in
-        case point of
-            Just value ->
-                Dict.keys <| Dict.filter (isMatch value) board
-
-            Nothing ->
-                []
-
-
-getNeighbors : Point -> List Point
-getNeighbors ( x, y ) =
-    Set.toList <|
-        Set.remove ( x, y ) <|
-            Set.fromList
-                [ ( max (x - 1) 0, max (y - 1) 0 )
-                , ( max (x - 1) 0, y )
-                , ( max (x - 1) 0, min (y + 1) boardWidth )
-                , ( x, max (y - 1) 0 )
-                , ( x, min (y + 1) boardWidth )
-                , ( min (x + 1) boardWidth, max (y - 1) 0 )
-                , ( min (x + 1) boardWidth, y )
-                , ( min (x + 1) boardWidth, min (y + 1) boardWidth )
-                ]
 
 
 getBoardDict : Board -> BoardDict
