@@ -98,4 +98,6 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 .foundWordContainer {
   font-size: 20px;
   padding-left: 50px;
+  max-height: 500px;
+  overflow: scroll;
 }
