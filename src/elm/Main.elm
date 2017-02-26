@@ -38,37 +38,6 @@ subscriptions model =
 
 
 
--- HTTP
-
-
-authenticatedGet : String -> Decode.Decoder String -> Http.Request String
-authenticatedGet url decoder =
-    Http.request
-        { method = "GET"
-        , headers = [ Http.header "X-Mashape-Key" "7RhzLqB7x0mshfh5YE2afEP7Ngkxp1xigQqjsnKy6oDuQ7CfkC" ]
-        , body = Http.emptyBody
-        , url = url
-        , expect = Http.expectJson decoder
-        , timeout = Nothing
-        , withCredentials = False
-        }
-
-
-lookUpWord : String -> Cmd Msg
-lookUpWord word =
-    let
-        url =
-            "https://wordsapiv1.p.mashape.com/words/" ++ word
-    in
-        Http.send DefineWord (authenticatedGet url decodeResponse)
-
-
-decodeResponse : Decode.Decoder String
-decodeResponse =
-    Decode.at [ "word" ] Decode.string
-
-
-
 -- MODEL
 
 
@@ -109,6 +78,19 @@ boardWidth =
     5
 
 
+
+-- INIT
+
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    ( { model
+        | board = createBoard flags.startTime
+      }
+    , Cmd.none
+    )
+
+
 createBoard : Int -> BoardDict
 createBoard seed =
     let
@@ -124,19 +106,6 @@ createBoard seed =
             { letter = letter, match = False }
     in
         getBoardDict <| List.map tilesForRow letters
-
-
-
--- INIT
-
-
-init : Flags -> ( Model, Cmd Msg )
-init flags =
-    ( { model
-        | board = createBoard flags.startTime
-      }
-    , Cmd.none
-    )
 
 
 
@@ -317,3 +286,34 @@ view model =
                 , a [ Html.Attributes.href "http://iamjea.net" ] [ text "My Website" ]
                 ]
             ]
+
+
+
+-- HTTP
+
+
+authenticatedGet : String -> Decode.Decoder String -> Http.Request String
+authenticatedGet url decoder =
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "X-Mashape-Key" "7RhzLqB7x0mshfh5YE2afEP7Ngkxp1xigQqjsnKy6oDuQ7CfkC" ]
+        , body = Http.emptyBody
+        , url = url
+        , expect = Http.expectJson decoder
+        , timeout = Nothing
+        , withCredentials = False
+        }
+
+
+lookUpWord : String -> Cmd Msg
+lookUpWord word =
+    let
+        url =
+            "https://wordsapiv1.p.mashape.com/words/" ++ word
+    in
+        Http.send DefineWord (authenticatedGet url decodeResponse)
+
+
+decodeResponse : Decode.Decoder String
+decodeResponse =
+    Decode.at [ "word" ] Decode.string
