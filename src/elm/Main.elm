@@ -92,20 +92,7 @@ type alias Flags =
 
 model : Model
 model =
-    { board =
-        let
-            letters =
-                [ [ "" ] ]
-
-            tilesForRow : List String -> Row
-            tilesForRow row =
-                List.map tileForLetter row
-
-            tileForLetter : String -> Tile
-            tileForLetter letter =
-                { letter = letter, match = False }
-        in
-            getBoardDict <| List.map tilesForRow letters
+    { board = getBoardDict <| [ [ { letter = "", match = False } ] ]
     , score = 0
     , currentGuess = ""
     , foundWords = []
