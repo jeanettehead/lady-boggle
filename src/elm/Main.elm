@@ -60,11 +60,11 @@ lookUpWord word =
         url =
             "https://wordsapiv1.p.mashape.com/words/" ++ word
     in
-        Http.send DefineWord (authenticatedGet url decodeGifUrl)
+        Http.send DefineWord (authenticatedGet url decodeResponse)
 
 
-decodeGifUrl : Decode.Decoder String
-decodeGifUrl =
+decodeResponse : Decode.Decoder String
+decodeResponse =
     Decode.at [ "word" ] Decode.string
 
 
